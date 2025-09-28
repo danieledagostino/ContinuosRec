@@ -5,6 +5,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.os.Handler;
@@ -33,6 +34,8 @@ public class MainActivity extends AppCompatActivity {
     private Handler handler = new Handler();
     private Runnable timerRunnable;
 
+    private SharedPreferences prefs;
+
     private ActivityResultLauncher<String[]> requestPermissionLauncher;
 
     @Override
@@ -44,6 +47,10 @@ public class MainActivity extends AppCompatActivity {
         tvTimer = findViewById(R.id.tvTimer);
         tvHeaderCount = findViewById(R.id.tvHeaderCount);
         waveformView = findViewById(R.id.waveformView); // ⚡ aggiunto
+
+        prefs = getSharedPreferences(SettingsActivity.PREFS, MODE_PRIVATE);
+        float savedThreshold = prefs.getInt("threshold_db", 50); // default 50 dB
+        waveformView.setThresholdDb(savedThreshold);
 
         btnToggle.setOnClickListener(v -> toggleRecording());
 
@@ -124,6 +131,8 @@ public class MainActivity extends AppCompatActivity {
             isRecording = false;
             btnToggle.setImageResource(android.R.drawable.ic_media_play);
         }
+
+        waveformView.invalidate();
     }
 
     private boolean hasRequiredPermissions() {

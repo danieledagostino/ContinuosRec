@@ -19,7 +19,6 @@ public class SettingsActivity extends AppCompatActivity {
     private SeekBar sbThreshold;
     private TextView tvThresholdValue;
     private AudioLevelMeter meterPreview;
-
     private SeekBar sbFrame;
     private TextView tvFrameValue;
 
@@ -33,6 +32,7 @@ public class SettingsActivity extends AppCompatActivity {
 
     private SharedPreferences prefs;
 
+    @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);

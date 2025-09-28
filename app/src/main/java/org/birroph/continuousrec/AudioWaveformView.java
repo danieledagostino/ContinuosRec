@@ -65,7 +65,7 @@ public class AudioWaveformView extends View {
 
         float dx = (float) w / (maxSamples - 1);
 
-        // disegna la linea audio
+        // Disegna prima la linea onda
         for (int i = 1; i < levels.size(); i++) {
             float x1 = (i - 1) * dx;
             float y1 = h - (levels.get(i - 1) * h);
@@ -74,8 +74,11 @@ public class AudioWaveformView extends View {
             canvas.drawLine(x1, y1, x2, y2, linePaint);
         }
 
-        // soglia (in verde orizzontale)
-        float ty = h - (thresholdDb / 120f * h);
+        // Calcola posizione verticale soglia (valore normalizzato fra 0 e 1)
+        float thresholdNormalized = thresholdDb / 120f;
+        float ty = h - (thresholdNormalized * h);
+
+        // Disegna linea rossa della soglia sopra la linea onda, ma nel punto esatto medio
         canvas.drawLine(0, ty, w, ty, thresholdPaint);
     }
 }
