@@ -84,18 +84,10 @@ public class SettingsActivity extends AppCompatActivity {
                 else val = 60;
                 sbFrame.setProgress(val);
                 tvFrameValue.setText(val + " s");
-            }
-            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
-            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
-        });
 
-        sbSilenceCut.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            @Override
-            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                // Snap to allowed values (10..60 step 5)
-                int val = Math.max(10, Math.min(60, (progress / 5) * 5));
                 sbSilenceCut.setProgress(val);
                 tvSilenceValue.setText(val + " s");
+
             }
             @Override public void onStartTrackingTouch(SeekBar seekBar) {}
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}

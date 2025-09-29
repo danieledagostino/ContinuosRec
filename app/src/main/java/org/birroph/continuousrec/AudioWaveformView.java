@@ -34,17 +34,6 @@ public class AudioWaveformView extends View {
         invalidate();
     }
 
-    /**
-    public void addLevel(float db) {
-        // normalizza dB (0..120) in percentuale
-        float norm = Math.min(1f, Math.max(0f, db / 120f));
-        levels.add(norm);
-        if (levels.size() > maxSamples) {
-            levels.remove(0); // rimuovi vecchi
-        }
-        invalidate();
-    } **/
-
     public void addLevel(float normalizedLevel) {
         // normalizedLevel è già compreso tra 0 e 1
         float norm = Math.min(1f, Math.max(0f, normalizedLevel));
@@ -52,6 +41,11 @@ public class AudioWaveformView extends View {
         if (levels.size() > maxSamples) {
             levels.remove(0); // rimuovi vecchi
         }
+        invalidate();
+    }
+
+    public void clearLevels() {
+        levels.clear();
         invalidate();
     }
 

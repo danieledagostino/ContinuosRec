@@ -127,14 +127,13 @@ public class MainActivity extends AppCompatActivity {
             ContextCompat.startForegroundService(this, intent);
             isRecording = true;
             btnToggle.setImageResource(android.R.drawable.ic_media_pause);
+            waveformView.clearLevels();
         } else {
             Intent intent = new Intent(this, RecordingService.class);
             stopService(intent);
             isRecording = false;
             btnToggle.setImageResource(android.R.drawable.ic_media_play);
         }
-
-        waveformView.invalidate();
     }
 
     private boolean hasRequiredPermissions() {
