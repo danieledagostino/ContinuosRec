@@ -56,7 +56,7 @@ public class RecordingService extends Service {
     private long silenceCounterMs = 0;
     private boolean hadAboveThreshold = false;
 
-    private volatile double lastDb = 0;
+    private volatile double normalizedLevelForWave = 0;
 
     // ⭐️ Callback per aggiornare l’UI
     public interface LevelCallback {
@@ -107,15 +107,20 @@ public class RecordingService extends Service {
 
             int frameSec = prefs.getInt("frame_sec", 30);
             int silenceCut = prefs.getInt("silence_cut", 20);
-            int thresholdDb = prefs.getInt("threshold_db", 50);
+            int thresholdPercent = prefs.getInt("threshold_db", 50);
 
             long frameMs = frameSec * 1000L;
             long silenceCutMs = silenceCut * 1000L;
 
             long fileStartMs = 0;
-            long lastAboveTs = 0;
+            long lastAboveTs = System.currentTimeMillis();
 
             try {
+                // ⭐️ Apriamo subito un nuovo file
+                startNewTempFile();
+                fileStartMs = System.currentTimeMillis();
+                currentlyRecordingToFile = true;
+
                 while (running) {
                     int read = recorder.read(buffer, 0, buffer.length);
                     if (read <= 0) continue;
@@ -126,32 +131,24 @@ public class RecordingService extends Service {
                     }
                     rms = Math.sqrt(rms / read);
 
-                    // Livello normalizzato RMS (da 0 a 1)
                     float normalizedLevel = (float) Math.min(1.0, rms / 32768.0);
-
-                    // Aggiorna lastDb col valore normalizzato
-                    lastDb = normalizedLevel;
+                    normalizedLevelForWave = normalizedLevel;
 
                     long now = System.currentTimeMillis();
 
-                    // ⭐️ Invio livello in tempo reale all’UI
                     if (levelCallback != null) {
                         levelCallback.onLevel(normalizedLevel);
                     }
 
-                    // La soglia va confrontata con il valore in dB,
-                    // quindi ricalcoliamo dB per confronto soglia:
-                    double db = 20 * Math.log10(rms / 32768.0 + 1e-6);
-                    if (db < 0) db = 0;
-                    if (db > 120) db = 120;
+                    float thresholdNormalized = thresholdPercent / 100f;
+                    boolean above = normalizedLevel >= thresholdNormalized;
 
-                    boolean above = db >= thresholdDb;
                     if (above) {
                         lastAboveTs = now;
                         hadAboveThreshold = true;
                     }
 
-                    // Write into current file if recording
+                    // Scriviamo sempre
                     if (currentlyRecordingToFile) {
                         try {
                             byte[] bytes = shortToLittleEndianBytes(buffer, read);
@@ -160,27 +157,26 @@ public class RecordingService extends Service {
                         } catch (IOException e) {
                             Log.e(TAG, "Write error", e);
                         }
-                    } else {
-                        if (above) {
-                            startNewTempFile();
-                            fileStartMs = now;
-                            currentlyRecordingToFile = true;
-                            hadAboveThreshold = true;
-                        }
                     }
 
-                    if (currentlyRecordingToFile && (now - fileStartMs >= frameMs)) {
+                    // ⭐️ Se file ha raggiunto frameSec -> chiudi e apri subito un nuovo file
+                    if (now - fileStartMs >= frameMs) {
                         finalizeCurrentFile(hadAboveThreshold);
-                        currentlyRecordingToFile = false;
+                        startNewTempFile();
+                        fileStartMs = now;
+                        currentlyRecordingToFile = true;
                         hadAboveThreshold = false;
+                        lastAboveTs = now;
                     }
 
-                    if (currentlyRecordingToFile) {
-                        if (now - lastAboveTs >= silenceCutMs) {
-                            finalizeCurrentFile(hadAboveThreshold);
-                            currentlyRecordingToFile = false;
-                            hadAboveThreshold = false;
-                        }
+                    // ⭐️ Se silenzio prolungato -> chiudi file e apri subito un nuovo file
+                    if (now - lastAboveTs >= silenceCutMs) {
+                        finalizeCurrentFile(hadAboveThreshold);
+                        startNewTempFile();
+                        fileStartMs = now;
+                        currentlyRecordingToFile = true;
+                        hadAboveThreshold = false;
+                        lastAboveTs = now;
                     }
 
                     Thread.sleep(20);
@@ -195,6 +191,7 @@ public class RecordingService extends Service {
         recordingThread.start();
     }
 
+
     private void stopRecordingLoop() {
         running = false;
         try {
@@ -203,7 +200,8 @@ public class RecordingService extends Service {
     }
 
     private void startNewTempFile() throws IOException {
-        File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "continuousrec");
+        // quando apri il file temporaneo (PCM)
+        File dir = new File(getExternalFilesDir(Environment.DIRECTORY_MUSIC), "continuousrec");
         if (!dir.exists()) dir.mkdirs();
         currentTempFile = File.createTempFile("cr_tmp_", ".pcm", dir);
         currentOut = new BufferedOutputStream(new FileOutputStream(currentTempFile));
@@ -307,8 +305,8 @@ public class RecordingService extends Service {
         }
     }
 
-    public double getLastDbLevel() {
-        return lastDb;
+    public double getNormalizedLevel() {
+        return normalizedLevelForWave;
     }
 
     // Simple PCM->WAV converter helper class (static)

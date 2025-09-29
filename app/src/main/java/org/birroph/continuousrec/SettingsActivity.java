@@ -101,6 +101,19 @@ public class SettingsActivity extends AppCompatActivity {
             @Override public void onStopTrackingTouch(SeekBar seekBar) {}
         });
 
+        sbSilenceCut.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                int frame = sbFrame.getProgress();
+                int val = Math.min(progress, frame); // forza il limite
+                sbSilenceCut.setProgress(val);
+                tvSilenceValue.setText(val + " s");
+            }
+            @Override public void onStartTrackingTouch(SeekBar seekBar) {}
+            @Override public void onStopTrackingTouch(SeekBar seekBar) {}
+        });
+
+
         startPreviewMic();
     }
 

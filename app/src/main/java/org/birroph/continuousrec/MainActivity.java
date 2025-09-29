@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -46,14 +47,15 @@ public class MainActivity extends AppCompatActivity {
         btnToggle = findViewById(R.id.btnToggle);
         tvTimer = findViewById(R.id.tvTimer);
         tvHeaderCount = findViewById(R.id.tvHeaderCount);
-        waveformView = findViewById(R.id.waveformView); // ⚡ aggiunto
+        waveformView = findViewById(R.id.waveformView);
 
         prefs = getSharedPreferences(SettingsActivity.PREFS, MODE_PRIVATE);
-        float savedThreshold = prefs.getInt("threshold_db", 50); // default 50 dB
+        float savedThreshold = prefs.getInt("threshold_db", 50);
         waveformView.setThresholdDb(savedThreshold);
 
         btnToggle.setOnClickListener(v -> toggleRecording());
 
+        // Launcher per richiedere permessi
         requestPermissionLauncher = registerForActivityResult(
                 new ActivityResultContracts.RequestMultiplePermissions(), result -> {
                     Boolean audio = result.getOrDefault(Manifest.permission.RECORD_AUDIO, false);
@@ -74,9 +76,9 @@ public class MainActivity extends AppCompatActivity {
                     tvTimer.setText(formatSeconds(seconds));
                     tvHeaderCount.setText("Registrazioni: " + recordingService.getSavedCount());
 
-                    // 🔥 aggiorna waveform con livello audio
-                    double db = recordingService.getLastDbLevel();
-                    waveformView.addLevel((float) db);
+                    // aggiorna waveform con livello audio
+                    double normalizedLevel = recordingService.getNormalizedLevel();
+                    waveformView.addLevel((float) normalizedLevel);
                 }
                 handler.postDelayed(this, 200);
             }
@@ -141,7 +143,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void ensurePermissions() {
         if (!hasRequiredPermissions()) {
-            requestPermissionLauncher.launch(new String[]{Manifest.permission.RECORD_AUDIO});
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Android 13+: RECORD_AUDIO + READ_MEDIA_AUDIO (se usi cartella pubblica)
+                requestPermissionLauncher.launch(new String[]{
+                        Manifest.permission.RECORD_AUDIO,
+                        Manifest.permission.READ_MEDIA_AUDIO
+                });
+            } else {
+                // Android 12 e precedenti
+                requestPermissionLauncher.launch(new String[]{
+                        Manifest.permission.RECORD_AUDIO,
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                });
+            }
         }
     }
 
