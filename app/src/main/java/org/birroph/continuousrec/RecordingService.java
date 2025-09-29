@@ -224,19 +224,21 @@ public class RecordingService extends Service {
             return;
         }
 
-        String name = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(new Date());
+        String name = "ContinuousRec-" + new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", Locale.getDefault()).format(new Date());
         File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC), "continuousrec");
         if (!dir.exists()) dir.mkdirs();
-        File wav = new File(dir, name + ".wav");
+        File m4aFile = new File(dir, name + ".m4a");
         try {
-            PcmToWav.convert(currentTempFile, wav, sampleRate, 1, 16);
+            AudioConverter.convertToM4a(currentTempFile, m4aFile, sampleRate, 1, 16, this);
             savedCount++;
         } catch (IOException e) {
             Log.e(TAG, "convert", e);
         }
+
         if (currentTempFile != null) currentTempFile.delete();
         currentTempFile = null;
     }
+
 
     public long getRecordingSeconds() {
         if (!running) return 0;
@@ -307,72 +309,5 @@ public class RecordingService extends Service {
 
     public double getNormalizedLevel() {
         return normalizedLevelForWave;
-    }
-
-    // Simple PCM->WAV converter helper class (static)
-    static class PcmToWav {
-        static void convert(File pcmFile, File wavFile, int sampleRate, int channels, int bitsPerSample) throws IOException {
-            long totalAudioLen = pcmFile.length();
-            long totalDataLen = totalAudioLen + 36;
-            long byteRate = sampleRate * channels * bitsPerSample / 8;
-
-            byte[] header = new byte[44];
-
-            long longSampleRate = sampleRate;
-            long channelsL = channels;
-            long bitsPerSampleL = bitsPerSample;
-
-            // RIFF header
-            header[0] = 'R';
-            header[1] = 'I';
-            header[2] = 'F';
-            header[3] = 'F';
-            writeInt(header, 4, (int) totalDataLen);
-            header[8] = 'W';
-            header[9] = 'A';
-            header[10] = 'V';
-            header[11] = 'E';
-            header[12] = 'f';
-            header[13] = 'm';
-            header[14] = 't';
-            header[15] = ' ';
-            writeInt(header, 16, 16);
-            writeShort(header, 20, (short) 1); // PCM
-            writeShort(header, 22, (short) channelsL);
-            writeInt(header, 24, (int) longSampleRate);
-            writeInt(header, 28, (int) byteRate);
-            writeShort(header, 32, (short) (channelsL * bitsPerSampleL / 8));
-            writeShort(header, 34, (short) bitsPerSampleL);
-            header[36] = 'd';
-            header[37] = 'a';
-            header[38] = 't';
-            header[39] = 'a';
-            writeInt(header, 40, (int) totalAudioLen);
-
-            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(wavFile));
-            out.write(header, 0, 44);
-
-            FileInputStream fi = new FileInputStream(pcmFile);
-            byte[] buffer = new byte[4096];
-            int read;
-            while ((read = fi.read(buffer)) != -1) {
-                out.write(buffer, 0, read);
-            }
-            fi.close();
-            out.flush();
-            out.close();
-        }
-
-        private static void writeInt(byte[] buffer, int offset, int value) {
-            buffer[offset] = (byte) (value & 0xff);
-            buffer[offset + 1] = (byte) ((value >> 8) & 0xff);
-            buffer[offset + 2] = (byte) ((value >> 16) & 0xff);
-            buffer[offset + 3] = (byte) ((value >> 24) & 0xff);
-        }
-
-        private static void writeShort(byte[] buffer, int offset, short value) {
-            buffer[offset] = (byte) (value & 0xff);
-            buffer[offset + 1] = (byte) ((value >> 8) & 0xff);
-        }
     }
 }
